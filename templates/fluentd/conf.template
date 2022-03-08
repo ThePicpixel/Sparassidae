@@ -1,0 +1,72 @@
+# If permission is denied :
+# sudo chmod og+wrx /var/log/audit
+# sudo chmod og+r /var/log/audit/audit.log
+
+<source>
+  @type tail
+  path /shared/data/audit.log
+  pos_file /shared/data/audit.log.pos
+  tag linux.audit.suse4eva
+  <parse>
+    @type none
+    message_key message
+  </parse>
+</source>
+
+<source>
+  @type tail
+  path /shared/dataset/process_injection.json
+  pos_file /shared/dataset/process_injection.log.pos
+  tag dataset.process_injection
+  read_from_head true
+  <parse>
+    @type json
+    time_type string
+    time_format %Y-%m-%dT%H:%M:%S%z
+  </parse>
+</source>
+
+<source>
+  @type tail
+  path /shared/dataset/collection.json
+  pos_file /shared/dataset/collection.log.pos
+  tag dataset.collection
+  read_from_head true
+  <parse>
+    @type json
+    time_type string
+    time_format %Y-%m-%dT%H:%M:%S%z
+  </parse>
+</source>
+
+
+<filter **.audit.**>
+  @type parse_audit_log
+  key message
+</filter>
+
+<match **.dataset.**>
+  @type elasticsearch
+  host {{ conf.elasticsearch.host }}
+  scheme http
+  port {{ conf.elasticsearch.port }}
+  user {{ conf.fluentd.user }}
+  password {{ conf.fluentd.pass }}
+  logstash_format true
+  logstash_prefix dataset
+  tag_name dataset
+  flush_interval 20
+</match>
+
+<match **.audit.**>
+  @type elasticsearch
+  host {{ conf.elasticsearch.host }}
+  scheme http
+  port {{ conf.elasticsearch.port }}
+  user {{ conf.fluentd.user }}
+  password {{ conf.fluentd.pass }}
+  logstash_format true
+  logstash_prefix fluentd
+  tag_name audit
+  flush_interval 20
+</match>

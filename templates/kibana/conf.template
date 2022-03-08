@@ -1,0 +1,5 @@
+server.name: kibana
+server.host: "0.0.0.0"
+elasticsearch.hosts: [ "http://{{ conf.elasticsearch.host }}:{{ conf.elasticsearch.port }}" ]
+elasticsearch.username: {{ conf.kibana.user }}
+elasticsearch.password: {{ conf.kibana.pass }}

@@ -1,0 +1,71 @@
+
+elasticsearch:
+  enabled: true
+  container: 
+    image: elasticsearch
+    tag: 8.0.1
+  host: localhost
+  port: 9200
+  scheme: https
+  config:
+    filename: elasticsearch.yml
+  env:
+    - name: discovery.type
+      value: single-node
+    - name: ELASTIC_PASSWORD
+      value: changeme
+  volumes:
+    - path: elasticsearch/conf/elasticsearch.yml
+      mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+    - path: elasticsearch/cert/elastic-certificates.p12
+      mountPath: /usr/share/elasticsearch/config/elastic-certificates.p12
+
+kibana:
+  enabled: true
+  container:
+    image: kibana
+    tag: 8.0.1
+  user: kibana_system
+  pass: changeme
+  config:
+    filename: kibana.yml
+  volumes:
+    - path: kibana/conf/kibana.yml
+      mountPath: /usr/share/kibana/config/kibana.yml
+
+elastalert2:
+  enabled: true
+  container:
+    image: jertel/elastalert2
+    tag: latest
+  user: elastic
+  pass: changeme
+  config:
+    filename: config.yaml
+  volumes:
+    - path: elastalert2/enhancements
+      mountPath: /opt/elastalert/enhancements
+    - path: elastalert2/certs
+      mountPath: /opt/elastalert/certs
+    - path: elastalert2/rules
+      mountPath: /opt/elastalert/rules
+    - path: elastalert2/conf/config.yaml
+      mountPath: /opt/elastalert/config.yaml
+
+fluentd:
+  enabled: true
+  container:
+    image: fluentd-sparassidae
+    tag: latest
+  user: elastic
+  pass: changeme
+  command_line: -c /fluentd/etc/fluent.conf
+  config:
+    filename: fluent.conf
+  volumes:
+    - path: /var/log/audit
+      mountPath: /shared/data
+    - path: dataset
+      mountPath: /shared/dataset
+    - path: fluentd/conf
+      mountPath: /fluentd/etc
