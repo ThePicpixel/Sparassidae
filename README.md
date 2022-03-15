@@ -20,6 +20,11 @@ pip install -r requirements.txt
 source ./env/bin/activate
 ```
 
+You need to activate the podman REST API in a different terminal :
+```bash
+podman system service -t 0
+```
+
 Finally, run the following :
 
 ```bash
