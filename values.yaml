@@ -1,71 +1,89 @@
 
-elasticsearch:
-  enabled: true
-  container: 
-    image: elasticsearch
-    tag: 8.0.1
-  host: localhost
-  port: 9200
-  scheme: https
-  config:
-    filename: elasticsearch.yml
-  env:
-    - name: discovery.type
-      value: single-node
-    - name: ELASTIC_PASSWORD
-      value: changeme
-  volumes:
-    - path: elasticsearch/conf/elasticsearch.yml
-      mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
-    - path: elasticsearch/cert/elastic-certificates.p12
-      mountPath: /usr/share/elasticsearch/config/elastic-certificates.p12
+pod:
+  name: "sparassidae"
+  expose:
+    - 9200
+    - 5601
+    - 5140
 
-kibana:
-  enabled: true
-  container:
-    image: kibana
-    tag: 8.0.1
-  user: kibana_system
-  pass: changeme
-  config:
-    filename: kibana.yml
-  volumes:
-    - path: kibana/conf/kibana.yml
-      mountPath: /usr/share/kibana/config/kibana.yml
+containers:
+  elasticsearch:
+    enabled: true
+    container: 
+      image: elasticsearch
+      tag: 8.0.1
+    host: localhost
+    port: 9200
+    scheme: https
+    config:
+      filename: elasticsearch.yml
+    env:
+      - name: discovery.type
+        value: single-node
+      - name: ELASTIC_PASSWORD
+        value: changeme
+    volumes:
+      - path: elasticsearch/conf/elasticsearch.yml
+        mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+        mode: "r"
+      - path: elasticsearch/cert/elastic-certificates.p12
+        mountPath: /usr/share/elasticsearch/config/elastic-certificates.p12
+        mode: "r"
 
-elastalert2:
-  enabled: true
-  container:
-    image: jertel/elastalert2
-    tag: latest
-  user: elastic
-  pass: changeme
-  config:
-    filename: config.yaml
-  volumes:
-    - path: elastalert2/enhancements
-      mountPath: /opt/elastalert/enhancements
-    - path: elastalert2/certs
-      mountPath: /opt/elastalert/certs
-    - path: elastalert2/rules
-      mountPath: /opt/elastalert/rules
-    - path: elastalert2/conf/config.yaml
-      mountPath: /opt/elastalert/config.yaml
+  kibana:
+    enabled: true
+    container:
+      image: kibana
+      tag: 8.0.1
+    user: kibana_system
+    pass: changeme
+    config:
+      filename: kibana.yml
+    volumes:
+      - path: kibana/conf/kibana.yml
+        mountPath: /usr/share/kibana/config/kibana.yml
+        mode: "r"
 
-fluentd:
-  enabled: true
-  container:
-    image: fluentd-sparassidae
-    tag: latest
-  user: elastic
-  pass: changeme
-  command_line: -c /fluentd/etc/fluent.conf
-  config:
-    filename: fluent.conf
-  volumes:
-    - path: /var/log/audit
-      mountPath: /shared/data
-    - path: dataset
-      mountPath: /shared/dataset
-    - path: fluentd/conf
-      mountPath: /fluentd/etc
+  elastalert2:
+    enabled: true
+    container:
+      image: jertel/elastalert2
+      tag: latest
+    user: elastic
+    pass: changeme
+    config:
+      filename: config.yaml
+    volumes:
+      - path: elastalert2/enhancements
+        mountPath: /opt/elastalert/enhancements
+        mode: "r"
+      - path: elastalert2/certs
+        mountPath: /opt/elastalert/certs
+        mode: "r"
+      - path: elastalert2/rules
+        mountPath: /opt/elastalert/rules
+        mode: "r"
+      - path: elastalert2/conf/config.yaml
+        mountPath: /opt/elastalert/config.yaml
+        mode: "r"
+
+  fluentd:
+    enabled: true
+    container:
+      image: fluentd-sparassidae
+      tag: latest
+    user: elastic
+    pass: changeme
+    command_line: -c /fluentd/etc/fluent.conf
+    config:
+      filename: fluent.conf
+    volumes:
+      - path: /var/log/audit
+        mountPath: /shared/data
+        mode: "rw"
+      - path: dataset
+        mountPath: /shared/dataset
+        mode: "rw"
+      - path: fluentd/conf
+        mountPath: /fluentd/etc
+        mode: "r"

@@ -1,3 +1,11 @@
+certifi==2021.10.8
+charset-normalizer==2.0.12
+idna==3.3
 Jinja2==3.0.3
 MarkupSafe==2.1.0
+podman-py==3.1.2.1
+pyxdg==0.27
 PyYAML==6.0
+requests==2.27.1
+toml==0.10.2
+urllib3==1.24.3

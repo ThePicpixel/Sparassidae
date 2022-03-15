@@ -1,5 +1,5 @@
 from utils import *
-
+from time import sleep
 
 def setup(conf):
 
@@ -25,46 +25,44 @@ def setup(conf):
 
 
 def run(conf):
+
+    url = "unix:///run/user/1000/podman/podman.sock"
     
     print("[*] Creating pod")
-    deploy_pod()
+    deploy_pod(url, conf["pod"])
 
     print("[*] Creating ES certs")
-    create_es_certificates()
+    create_es_certificates(url)
 
-    if conf["elasticsearch"]["enabled"]:
-        print("[*] Deploying elasticsearch")
-        deploy_container(conf, "elasticsearch")
+    while not os.path.exists("./elasticsearch/cert/elastic-certificates.p12"):
+        sleep(1)
 
-    if conf["kibana"]["enabled"]:
-        print("[*] Deploying kibana")
-        deploy_container(conf, "kibana")
+    os.system("chmod g+r elasticsearch/cert/*")
 
-    if conf["fluentd"]["enabled"]:
-        print("[*] Deploying fluentd")
-        deploy_container(conf, "fluentd")
+    print("[*] Deploying elasticsearch")
+    deploy_container(url, conf["containers"]["elasticsearch"], "sparassidae.elasticsearch")
 
     print("[*] Waiting for elasticsearch to be up...")
-    cmd = f'curl http://{conf["elasticsearch"]["host"]}:{conf["elasticsearch"]["port"]}'
+    cmd = f'curl http://{conf["containers"]["elasticsearch"]["host"]}:{conf["containers"]["elasticsearch"]["port"]}'
     output, error = execute(cmd)
 
     while "curl" in output.decode():
         output, error = execute(cmd)
 
-    print("[*] Configuring Kibana password")
-    
+    for cots in conf["containers"].keys():
+        if cots != "elasticsearch" and conf["containers"][cots]["enabled"]:
+            print(f'[*] Deploying {cots}')
+            deploy_container(url, conf["containers"][cots], f'sparassidae.{cots}')
+
+
+    print("[*] Changing kibana password")
     es_pass = ""
-    for env in conf["elasticsearch"]["env"]:
+    for env in conf["containers"]["elasticsearch"]["env"]:
         if env["name"] == "ELASTIC_PASSWORD":
             es_pass = env["value"]
             break
 
-    os.system(f'curl -XPOST -u elastic:{es_pass} http://{conf["elasticsearch"]["host"]}:{conf["elasticsearch"]["port"]}/_security/user/{conf["kibana"]["user"]}/_password -H "Content-Type: application/json" -d \'{{"password":"{conf["kibana"]["pass"]}"}}\'')
-
-    if conf["elastalert2"]["enabled"]:
-        print("[*] Deploying elastalert2")
-        deploy_container(conf, "elastalert2")
-
+    os.system(f'curl -XPOST -u elastic:{es_pass} http://{conf["containers"]["elasticsearch"]["host"]}:{conf["containers"]["elasticsearch"]["port"]}/_security/user/{conf["containers"]["kibana"]["user"]}/_password -H "Content-Type: application/json" -d \'{{"password":"{conf["containers"]["kibana"]["pass"]}"}}\'')
 
 if __name__ == '__main__':
 
@@ -72,7 +70,7 @@ if __name__ == '__main__':
     conf = load_conf("values.yaml")
     
     print("[*] Starting setup")
-    setup(conf)
+    setup(conf["containers"])
 
     print("[*] Starting containers")
     run(conf)
