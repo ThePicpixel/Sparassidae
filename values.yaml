@@ -4,14 +4,15 @@ pod:
   expose:
     - 9200
     - 5601
-    - 5140
+    - 5044
+    - 11211
 
 containers:
   elasticsearch:
     enabled: true
     container: 
       image: elasticsearch
-      tag: 8.0.1
+      tag: 8.1.0
     host: localhost
     port: 9200
     scheme: https
@@ -25,27 +26,25 @@ containers:
     volumes:
       - path: elasticsearch/conf/elasticsearch.yml
         mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
-        mode: "r"
       - path: elasticsearch/cert/elastic-certificates.p12
         mountPath: /usr/share/elasticsearch/config/elastic-certificates.p12
-        mode: "r"
 
   kibana:
     enabled: true
     container:
       image: kibana
-      tag: 8.0.1
+      tag: 8.1.0
     user: kibana_system
     pass: changeme
+    encryptionKey: "abcdefghijklmnopqrstuvwxyz0123456789"
     config:
       filename: kibana.yml
     volumes:
       - path: kibana/conf/kibana.yml
         mountPath: /usr/share/kibana/config/kibana.yml
-        mode: "r"
 
   elastalert2:
-    enabled: true
+    enabled: false
     container:
       image: jertel/elastalert2
       tag: latest
@@ -56,19 +55,42 @@ containers:
     volumes:
       - path: elastalert2/enhancements
         mountPath: /opt/elastalert/enhancements
-        mode: "r"
       - path: elastalert2/certs
         mountPath: /opt/elastalert/certs
-        mode: "r"
       - path: elastalert2/rules
         mountPath: /opt/elastalert/rules
-        mode: "r"
       - path: elastalert2/conf/config.yaml
         mountPath: /opt/elastalert/config.yaml
-        mode: "r"
+
+  memcached:
+    enabled: true
+    container:
+      image: memcached
+      tag: latest
+    command_line: memcached -m 1024
+
+  logstash:
+    enabled: true
+    container:
+      image: logstash
+      tag: 8.1.0
+    user: elastic
+    pass: changeme
+    config:
+      filename: logstash.conf
+    env:
+      - name: XPACK_MONITORING_ELASTICSEARCH_HOSTS 
+        value: "[ \"http://localhost:9200\" ]"
+      - name: XPACK_MONITORING_ELASTICSEARCH_USERNAME
+        value: "elastic"
+      - name: XPACK_MONITORING_ELASTICSEARCH_PASSWORD
+        value: "changeme"
+    volumes:
+      - path: logstash/conf/logstash.conf
+        mountPath: /usr/share/logstash/pipeline/logstash.conf
 
   fluentd:
-    enabled: true
+    enabled: false
     container:
       image: fluentd-sparassidae
       tag: latest
@@ -80,10 +102,7 @@ containers:
     volumes:
       - path: /var/log/audit
         mountPath: /shared/data
-        mode: "rw"
       - path: dataset
         mountPath: /shared/dataset
-        mode: "rw"
       - path: fluentd/conf
         mountPath: /fluentd/etc
-        mode: "r"

@@ -82,11 +82,12 @@ def deploy_container(url, conf, name):
             "source": os.path.abspath(vol["path"]),
             "type": "bind"
         } for vol in conf["volumes"]
-    ]
-
-    for vol in conf["volumes"]:
-        if not os.path.exists(vol["path"]):
-            os.makedirs(vol["path"], exist_ok=True)
+    ] if "volumes" in conf.keys() else []
+    
+    if "volumes" in conf.keys():
+        for vol in conf["volumes"]:
+            if not os.path.exists(vol["path"]):
+                os.makedirs(vol["path"], exist_ok=True)
 
     command = conf["command_line"].split(" ") if "command_line" in conf.keys() else []
 

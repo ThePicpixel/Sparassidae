@@ -5,7 +5,7 @@ def setup(conf):
 
     for cots in conf.keys():
 
-        if conf[cots]["enabled"]:
+        if conf[cots]["enabled"] and "config" in conf[cots].keys():
 
             print(f"[*] Setting up {cots}")
 
@@ -48,6 +48,7 @@ def run(conf):
 
     while "curl" in output.decode():
         output, error = execute(cmd)
+        sleep(1)
 
     for cots in conf["containers"].keys():
         if cots != "elasticsearch" and conf["containers"][cots]["enabled"]:
@@ -63,6 +64,9 @@ def run(conf):
             break
 
     os.system(f'curl -XPOST -u elastic:{es_pass} http://{conf["containers"]["elasticsearch"]["host"]}:{conf["containers"]["elasticsearch"]["port"]}/_security/user/{conf["containers"]["kibana"]["user"]}/_password -H "Content-Type: application/json" -d \'{{"password":"{conf["containers"]["kibana"]["pass"]}"}}\'')
+
+    print("[*] Changing logstash password")
+    os.system(f'curl -XPOST -u elastic:{es_pass} http://{conf["containers"]["elasticsearch"]["host"]}:{conf["containers"]["elasticsearch"]["port"]}/_security/user/{conf["containers"]["logstash"]["user"]}/_password -H "Content-Type: application/json" -d \'{{"password":"{conf["containers"]["logstash"]["pass"]}"}}\'')
 
 if __name__ == '__main__':
 

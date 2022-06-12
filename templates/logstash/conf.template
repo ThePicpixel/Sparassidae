@@ -1,0 +1,25 @@
+input {
+	beats {
+                port => 5044
+        }
+}
+
+filter {
+
+        mutate {
+                add_field => {
+                  "misp_level" => "HIGH"
+                  "misp_confidence" => "Pas tant que ça"
+                }
+        }
+
+}
+
+output {
+	elasticsearch {
+		hosts => ["http://localhost:9200"]
+		index => "%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}"
+		user => "{{ conf.logstash.user }}"
+		password => "{{ conf.logstash.pass }}"
+	}
+}
