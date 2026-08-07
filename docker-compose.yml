@@ -1,0 +1,126 @@
+name: elastic-single
+
+services:
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: es01
+    restart: unless-stopped
+    environment:
+      - node.name=es01
+      - cluster.name=${CLUSTER_NAME}
+      - discovery.type=single-node
+      - bootstrap.memory_lock=${MEMORY_LOCK}
+      - ES_JAVA_OPTS=-Xms${ES_HEAP} -Xmx${ES_HEAP}
+      - xpack.license.self_generated.type=${LICENSE}
+      # Security is configured explicitly, which also suppresses the image's
+      # auto-configuration path (it would otherwise mint its own certs).
+      - xpack.security.enabled=true
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/es01/es01.key
+      - xpack.security.http.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/es01/es01.key
+      - xpack.security.transport.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      # No ELASTIC_PASSWORD here on purpose: the elastic user's initial
+      # password comes from bootstrap.password inside the keystore.
+    volumes:
+      - ./certs:/usr/share/elasticsearch/config/certs:ro${SELINUX_LABEL}
+      - ./secrets/elasticsearch.keystore:/usr/share/elasticsearch/config/elasticsearch.keystore:rw${SELINUX_LABEL}
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "${ES_PORT}:9200"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    mem_limit: ${ES_MEM_LIMIT}
+    healthcheck:
+      # An unauthenticated request over TLS returning the 401 body proves both
+      # that the node is up and that HTTPS is terminating correctly.
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kibana
+    restart: unless-stopped
+    depends_on:
+      es01:
+        condition: service_healthy
+    environment:
+      - SERVERNAME=kibana
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PUBLICBASEURL=https://localhost:${KIBANA_PORT}
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=full
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=config/certs/kibana/kibana.crt
+      - SERVER_SSL_KEY=config/certs/kibana/kibana.key
+      # elasticsearch.password and the xpack.* encryption keys live in the
+      # keystore, not here.
+    volumes:
+      - ./certs:/usr/share/kibana/config/certs:ro${SELINUX_LABEL}
+      - ./secrets/kibana.keystore:/usr/share/kibana/config/kibana.keystore:rw${SELINUX_LABEL}
+      - kibanadata:/usr/share/kibana/data
+    ports:
+      - "${KIBANA_PORT}:5601"
+    mem_limit: 1g
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf -o /dev/null --cacert config/certs/ca/ca.crt https://localhost:5601/api/status",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 60s
+
+  fluentd:
+    build:
+      context: .
+      args:
+        FLUENTD_VERSION: ${FLUENTD_VERSION}
+    image: local/fluentd-elastic:${FLUENTD_VERSION}
+    container_name: fluentd
+    restart: unless-stopped
+    depends_on:
+      es01:
+        condition: service_healthy
+    environment:
+      - ES_HOST=es01
+      - ES_PORT=9200
+      - ES_USER=fluentd
+      - ES_PASSWORD=${FLUENTD_PASSWORD}
+      - ES_CA=/fluentd/certs/ca/ca.crt
+      - FLUENTD_CONF=fluent.conf
+    volumes:
+      - ./certs:/fluentd/certs:ro${SELINUX_LABEL}
+      - ./fluent.conf:/fluentd/etc/fluent.conf:ro${SELINUX_LABEL}
+      - fluentdbuf:/fluentd/buffer
+    ports:
+      - "${FLUENTD_PORT}:24224"
+      - "${FLUENTD_PORT}:24224/udp"
+      - "127.0.0.1:9880:9880"
+    mem_limit: 512m
+
+volumes:
+  esdata:
+  kibanadata:
+  fluentdbuf:
